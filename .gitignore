@@ -1,0 +1,6 @@
+*pyc
+assets/*
+haarcascades/*
+*~
+test*
+main*
