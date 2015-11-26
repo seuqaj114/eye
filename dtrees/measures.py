@@ -18,5 +18,5 @@ def custom_entropy(patches, offsets, steepness=0.125):
 
     return entropy
     
-def info_gain(params, entropy, **kwargs):
+def custom_info_gain(patches, offsets, split_indexes):
     pass
