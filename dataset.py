@@ -5,7 +5,7 @@ from random import shuffle
 
 MAX_NUM_IMAGES = 1521
 
-class DataProvider():
+class BioIDDataProvider():
     
     def __init__(self, num_images=MAX_NUM_IMAGES, randomize=False):
 
