@@ -51,7 +51,7 @@ class BioIDDataProvider():
         return coords
 
     def format_keypoints_file(self,filename):
-
+        
         #   See http://personalpages.manchester.ac.uk/staff/timothy.f.cootes/data/bioid_points.html for format
         with open(filename,"r") as fp:
             coords = []
