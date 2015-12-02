@@ -2,6 +2,21 @@ import numpy as np
 from random import randint
 from numpy import typecodes
 
+import cv2
+
+class HaarDetector():
+    def __init__(self):
+        self.face_cascade = cv2.CascadeClassifier('haarcascades/haarcascade_frontalface_default.xml')
+        self.eye_cascade  = cv2.CascadeClassifier('haarcascades/haarcascade_eye.xml')
+
+    def detect_single_face(self, gray_image):
+        faces = self.face_cascade.detectMultiScale(gray_image, 1.2, 5)
+
+        if len(faces) == 0:
+            return None
+        else:
+            return faces[0]
+
 class Patcher():
     def __init__(self, size=32):
         self.size = size
@@ -37,7 +52,7 @@ class Patcher():
 
         return offsets
 
-    def generate_parameters(self, n=10):
+    def generate_parameters(self, n=20):
         
         params_list = []
 
@@ -47,8 +62,8 @@ class Patcher():
 
             for j in range(1,3):
                 #   Generate top left corner
-                top_left_y = randint(0, 3*(self.size-1)/4)
-                top_left_x = randint(0, 3*(self.size-1)/4)
+                top_left_y = randint(0, (self.size-1)-5)
+                top_left_x = randint(0, (self.size-1)-5)
 
                 #   Generate bottom right corner
                 #   Parameter regions must be at least 25 pixels in area
@@ -59,7 +74,7 @@ class Patcher():
 
             params_list.append(params)  
 
-        return params_list
+        return np.array(params_list)
 
 def binary_test(patch, channels, params, th=0):
     """ This function should probably be vectorized... """
