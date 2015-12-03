@@ -8,9 +8,11 @@ MAX_NUM_IMAGES = 1521
 
 class BioIDDataProvider():
     
-    def __init__(self, num_images=MAX_NUM_IMAGES, randomize=False):
+    def __init__(self, num_images=MAX_NUM_IMAGES, randomize=False, face_size=100):
 
         self.num_images = max(1,min(num_images, MAX_NUM_IMAGES))
+        self.randimze   = randomize
+        self.face_size  = face_size
         
         if randomize:
             self.index_list = range(MAX_NUM_IMAGES)
@@ -24,6 +26,7 @@ class BioIDDataProvider():
         self.keypoints  = []
         self.faces      = []
         self.faces_bbox = []
+        self.rkeypoints = []
 
         self.IMG_PATH = os.path.abspath("assets/images")
         self.EYE_PATH = os.path.abspath("assets/eyepos")
@@ -45,9 +48,21 @@ class BioIDDataProvider():
             keypoints = self.format_keypoints_file(keypoints_filename)
             self.keypoints.append(keypoints)
 
+            #   Store square face bounding boxes
             face_bbox = self.extract_face_bbox(image, keypoints)
             self.faces_bbox.append(face_bbox)
 
+
+            face_bbox_size = face_bbox[1][0] - face_bbox[0][0]
+            face_to_box_ratio = float(self.face_size)/face_bbox_size
+
+            #   Store 100x100 face image
+            face = cv2.resize(image[face_bbox[0][1]:face_bbox[1][1],face_bbox[0][0]:face_bbox[1][0]], (self.face_size,self.face_size))
+            self.faces.append(face)
+
+            #   Store keypoints positions relative to rescaled face image
+            rkeypoints = [ map(int,[(kp[0]-face_bbox[0][0])*face_to_box_ratio, (kp[1]-face_bbox[0][1])*face_to_box_ratio]) for kp in keypoints]
+            self.rkeypoints.append(rkeypoints)
 
         self.__curr_index = 0
 
@@ -65,7 +80,8 @@ class BioIDDataProvider():
         #   See http://personalpages.manchester.ac.uk/staff/timothy.f.cootes/data/bioid_points.html for format
         with open(filename,"r") as fp:
             coords = []
-            for line in fp.readlines()[3:-1]:
+            #for line in fp.readlines()[3:-1]:
+            for line in fp.readlines()[3:5]:
                 coords.append(map(lambda x: int(float(x)),line.strip().split()))
 
         return coords
@@ -105,7 +121,7 @@ class BioIDDataProvider():
 
         assert (face_bbox[2] - face_bbox[0]) - (face_bbox[3] - face_bbox[1]) == 0, "Bounding box must be a square."
 
-        return face_bbox
+        return [[face_bbox[0],face_bbox[1]],[face_bbox[2],face_bbox[3]]]
 
     def __iter__(self):
         return self
@@ -113,7 +129,12 @@ class BioIDDataProvider():
     def next(self):
         try:
             self.__curr_index += 1
-            return (self.images[self.__curr_index-1], self.eyes[self.__curr_index-1], self.keypoints[self.__curr_index-1])
+            return (self.images[self.__curr_index-1], \
+                    self.eyes[self.__curr_index-1], \
+                    self.keypoints[self.__curr_index-1], \
+                    self.faces[self.__curr_index-1], \
+                    self.faces_bbox[self.__curr_index-1], \
+                    self.rkeypoints[self.__curr_index-1])
         except IndexError:
             self.__curr_index = 0
             raise StopIteration
