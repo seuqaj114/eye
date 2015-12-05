@@ -18,7 +18,7 @@ class HaarDetector():
             return faces[0]
 
 class Patcher():
-    def __init__(self, size=32):
+    def __init__(self, size=20):
         self.size = size
 
     #   This is for a single image
@@ -48,7 +48,7 @@ class Patcher():
             keypoints = np.array(keypoints)
 
         centroids = centroid(patches)
-        offsets = (np.repeat(centroids,keypoints.shape[0],axis=0)-np.tile(keypoints,(centroids.shape[0],1))).reshape(centroids.shape[0],keypoints.shape[0],2)
+        offsets = (np.tile(keypoints,(centroids.shape[0],1))-np.repeat(centroids,keypoints.shape[0],axis=0)).reshape(centroids.shape[0],keypoints.shape[0],2)
 
         return offsets
 
