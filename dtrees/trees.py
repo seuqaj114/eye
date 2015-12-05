@@ -1,7 +1,9 @@
 import numpy as np
 import sys
+import cv2
 
-from features import Patcher
+from measures import prob_positive
+from features import Patcher, binary_test, centroid
 from utils import timeit
 
 class DecisionTree():
@@ -53,17 +55,47 @@ class DecisionTree():
 
         self.split_node(node, self.patches, self.offsets, self.indexes, self.params_list)
 
-    def apply(self, X):
-        raise NotImplementedError()
+    @timeit
+    def apply(self, face, patch_size=20, num_patches=50, visualize=False):
+
+        patcher = Patcher(patch_size)
+        patches = patcher.generate_patches(face, num_patches)
+
+        if visualize:
+            for patch in patches:
+                cv2.rectangle(face,(patch[0][0],patch[0][1]),(patch[1][0],patch[1][1]),(255,0,0),1)
+
+            cv2.imshow('img',face)
+            cv2.waitKey(1500)
+            cv2.destroyAllWindows()
+
+        keypoints = np.array([])
+
+        for i in range(patches.shape[0]):
+            node = self.nodes[0]
+            while not node.is_leaf:
+                bt = binary_test(patches[i], face, node.params)
+                #   If 0, go left, if 1 go right
+                node = node.children[int(bt)]
+
+            if keypoints.shape[0] == 0:
+                keypoints = centroid(patches[i])+node.prob_dist[0]
+            else:
+                keypoints += centroid(patches[i])+node.prob_dist[0]
+
+        keypoints /= patches.shape[0]
+        return keypoints
 
     def split_node(self, node, patches, offsets, indexes, params_list):
-        
+
         if node.level == self.max_depth:
             node.is_leaf = True
             print "Leaf reached: level {}".format(node.level)
             print "Indexes: {}".format(indexes)
 
             node.prob_dist = self.create_gaussian_parameters(offsets)
+            node.prob_positive = prob_positive(patches, offsets)
+
             return
 
         criterion_best = 0.0
@@ -76,7 +108,7 @@ class DecisionTree():
             split_indexes = np.array([])
 
             for i in range(patches.shape[0]):
-                sys.stdout.write("\rPatch: {}/{} , Params: {}/{}".format(i,patches.shape[0],params_index,params_list.shape[0]))
+                sys.stdout.write("\rPatch: {}/{} , Params: {}/{}".format(i+1,patches.shape[0],params_index+1,params_list.shape[0]))
                 sys.stdout.flush() 
                 split_indexes = np.append(split_indexes, self.split_func(patches[i], self.data.faces[indexes[i]], params_list[params_index]))
 
@@ -100,7 +132,7 @@ class DecisionTree():
             print "Leaf reached: level {}".format(node.level)
             print "Indexes: {}".format(indexes)
             node.prob_dist = self.create_gaussian_parameters(offsets)
-            #   TODO: create probability distributions   
+            node.prob_positive = prob_positive(patches, offsets)
 
         #   Otherwise, continue recursion
         else:
@@ -142,8 +174,8 @@ class DecisionTree():
         return mean, cov
 
 class Node():
-    def __init__(self, level=None, children=[]):
-        self.children = children
+    def __init__(self, level=None):
+        self.children = []
         self.params = {}
         self.is_leaf  = False
         self.prob_dist = None
